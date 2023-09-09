@@ -25,15 +25,6 @@ pragma solidity ^0.8.18;
 import {VRFCoordinatorV2Interface} from "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
-error Raffle_NotEnougthETH();
-error Raffle_TransferFailed();
-error Raffle_RaffleNotOpen();
-error Raffle_UpkeepNotNeeded(
-    uint256 currentBalance,
-    uint256 numPlayers,
-    uint256 raffleState
-);
-
 /**
  * @title Raffle
  * @author Antwi Erasmus
@@ -42,13 +33,19 @@ error Raffle_UpkeepNotNeeded(
  */
 
 contract Raffle is VRFConsumerBaseV2 {
+    /* Errors */
+    error Raffle_NotEnoughEthSent();
+    error Raffle_TransferFailed();
+    error Raffle_RaffleNotOpen();
+    error Raffle_UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 raffleState);
+
     /*Types*/
     enum RaffleState {
         OPEN,
         CALCULATING
     }
-    /*State Variables*/
 
+    /*State Variables*/
     uint256 private immutable i_interval;
     bytes32 private immutable i_keyHash;
     uint64 private immutable i_subscriptionId;
@@ -87,7 +84,7 @@ contract Raffle is VRFConsumerBaseV2 {
 
     function enterRaffle() external payable {
         if (msg.value < s_entranceFee) {
-            revert Raffle_NotEnougthETH();
+            revert Raffle_NotEnoughEthSent();
         }
         if (s_raffleState != RaffleState.OPEN) {
             revert Raffle_RaffleNotOpen();
@@ -125,11 +122,7 @@ contract Raffle is VRFConsumerBaseV2 {
         }
         s_raffleState = RaffleState.CALCULATING;
         i_vrfCoordinator.requestRandomWords(
-            i_keyHash, 
-            i_subscriptionId, 
-            REQUEST_CONFIRMATIONS, 
-            i_callbackGasLimit, 
-            NUM_WORDS
+            i_keyHash, i_subscriptionId, REQUEST_CONFIRMATIONS, i_callbackGasLimit, NUM_WORDS
         );
     }
 
@@ -155,5 +148,13 @@ contract Raffle is VRFConsumerBaseV2 {
     /*Getters*/
     function getEntranceFee() external view returns (uint256) {
         return s_entranceFee;
+    }
+
+    function getRaffleState() external view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function getPlayer(uint256 index) external view returns (address) {
+        return s_players[index];
     }
 }
